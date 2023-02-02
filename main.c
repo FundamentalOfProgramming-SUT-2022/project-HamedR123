@@ -11,8 +11,6 @@
 #define MAX_INPUT_SIZE 100
 #define MAX_OUTPUT_SIZE 100
 
-clipboard[(int)1e9];
-
 void super_md(char *address, int n)
 {
     int i;
@@ -199,6 +197,93 @@ int extract_from_input(char *input, char *subStr)
     return n;
 }
 
+void copy(char *fileName, int lineNum, int startPos, int size, char jahat, char *output)
+{
+    FILE *file = fopen(fileName, "r");
+    if (file == NULL)
+    {
+        strcpy(output, "Something went wrong!");
+        return;
+    }
+    FILE *clipboard = fopen(".clipboard.txt", "w");
+    --lineNum;
+    while (lineNum > 0 && !feof(file))
+        if (fgetc(file) == '\n')
+            --lineNum;
+    while (startPos > 0 && !feof(file))
+    {
+        fgetc(file);
+        --startPos;
+    }
+    if (jahat == 'b')
+        fseek(file, -size, SEEK_CUR);
+    else if (jahat != 'f')
+    {
+        strcpy(output, "No such option!");
+        return;
+    }
+    for (int i = 0; i < size; i++)
+        fputc(fgetc(file), clipboard);
+    fclose(file);
+    fclose(clipboard);
+    strcpy(output, "Copied!");
+}
+
+void cut(char *fileName, int lineNum, int startPos, int size, char jahat, char *output)
+{
+    copy(fileName, lineNum, startPos, size, jahat, output);
+    if (0 == strcmp("Copied!", output))
+        removeStr(fileName, lineNum, startPos, size, jahat, output);
+}
+
+void paste(char *fileName, int lineNum, int startPos, FILE *clipboard, char *output)
+{
+    FILE *file = fopen(fileName, "r");
+    if (file == NULL)
+        strcpy(output, "Something went wrong!");
+    else
+    {
+        int n = strlen(fileName);
+        char *dir = get_dir(fileName, n);
+        strcat(dir, "/thisIsAnAuxiliaryFile.txt");
+        FILE *auxiliary_file = fopen(dir, "w");
+        char c = 0;
+        --lineNum;
+        while (lineNum > 0 && !feof(file))
+        {
+            c = fgetc(file);
+            fputc(c, auxiliary_file);
+            if (c == '\n')
+                --lineNum;
+        }
+        while (startPos > 0 && !feof(file))
+        {
+            c = fgetc(file);
+            startPos--;
+            fputc(c, auxiliary_file);
+        }
+        while (1)
+        {
+            c = fgetc(clipboard);
+            if (c == EOF)
+                break;
+            fputc(c, auxiliary_file);
+        }
+        while (1)
+        {
+            c = fgetc(file);
+            if (c == EOF)
+                break;
+            fputc(c, auxiliary_file);
+        }
+        fclose(file);
+        fclose(auxiliary_file);
+        remove(fileName);
+        rename(dir, fileName);
+        strcpy(output, "Success!");
+    }
+}
+
 int main()
 {
     char *input_line = (char *)calloc(MAX_INPUT_SIZE, sizeof(char));
@@ -249,6 +334,31 @@ int main()
             input_line += strlen(lineNum) + 1;
             sscanf(input_line, "%s %s -%c", charNum, size, &flag);
             removeStr(fileName, atoi(lineNum), atoi(charNum), atoi(size), flag, output);
+        }
+        else if (0 == strcmp(command, "copy"))
+        {
+            input_line += extract_from_input(input_line, fileName) + 1;
+            sscanf(input_line, "%[^:]", lineNum);
+            input_line += strlen(lineNum) + 1;
+            sscanf(input_line, "%s %s -%c", charNum, size, &flag);
+            copy(fileName, atoi(lineNum), atoi(charNum), atoi(size), flag, output);
+        }
+        else if (0 == strcmp(command, "cut"))
+        {
+            input_line += extract_from_input(input_line, fileName) + 1;
+            sscanf(input_line, "%[^:]", lineNum);
+            input_line += strlen(lineNum) + 1;
+            sscanf(input_line, "%s %s -%c", charNum, size, &flag);
+            cut(fileName, atoi(lineNum), atoi(charNum), atoi(size), flag, output);
+        }
+        else if (0 == strcmp(command, "paste"))
+        {
+            input_line += extract_from_input(input_line, fileName) + 1;
+            sscanf(input_line, "%[^:]", lineNum);
+            input_line += strlen(lineNum) + 1;
+            sscanf(input_line, "%s", charNum);
+            FILE *clipboard = fopen(".clipboard.txt", "r");
+            paste(fileName, atoi(lineNum), atoi(charNum), clipboard, output);
         }
         else if (0 == strcmp(command, "exit"))
         {
