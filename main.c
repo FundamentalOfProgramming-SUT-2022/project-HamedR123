@@ -7,8 +7,8 @@
 #include <dirent.h>   //opendir(), DIR
 
 #define MAX_COMMAND_SIZE 20
-#define MAX_FILE_NAME 50
-#define MAX_INPUT_SIZE 100
+#define MAX_FILE_NAME 200
+#define MAX_INPUT_SIZE 1000
 #define MAX_OUTPUT_SIZE 100
 
 void super_md(char *address, int n)
@@ -76,6 +76,20 @@ void rm_ch_index(char *str, int i)
         str[j] = str[j + 1];
 }
 
+char *make_it_hidden(char *fileName, int n)
+{
+    int i;
+    for (i = n; i > 0; i--)
+        if (fileName[i] == '/')
+            break;
+    char *hiddenFile = (char *)calloc(MAX_FILE_NAME, sizeof(char));
+    strncpy(hiddenFile, fileName, i);
+    strcat(hiddenFile, "/.");
+    for (int j = i + 1; j <= n; j++)
+        hiddenFile[j + 1] = fileName[j];
+    return hiddenFile;
+}
+
 void insert(char *fileName, char *str, int lineNum, int charNum, char *output)
 {
     FILE *file = fopen(fileName, "r");
@@ -128,7 +142,7 @@ void insert(char *fileName, char *str, int lineNum, int charNum, char *output)
     }
     fclose(file);
     fclose(auxiliary_file);
-    remove(fileName);
+    rename(fileName, make_it_hidden(fileName, strlen(fileName)));
     rename(dir, fileName);
     strcpy(output, "Success!");
 }
@@ -138,7 +152,6 @@ void cat(char *fileName)
     FILE *file = fopen(fileName, "r");
     if (file == NULL)
     {
-        printf(fileName);
         puts("Something went wrong!");
         return;
     }
@@ -195,7 +208,7 @@ void removeStr(char *fileName, int lineNum, int charNum, int size, char jahat, c
     strcpy(output, "Success!");
     fclose(file);
     fclose(auxiliary_file);
-    remove(fileName);
+    rename(fileName, make_it_hidden(fileName, strlen(fileName)));
     rename(dir, fileName);
 }
 
@@ -315,10 +328,16 @@ void paste(char *fileName, int lineNum, int startPos, FILE *clipboard, char *out
         }
         fclose(file);
         fclose(auxiliary_file);
-        remove(fileName);
+        rename(fileName, make_it_hidden(fileName, strlen(fileName)));
         rename(dir, fileName);
         strcpy(output, "Success!");
     }
+}
+
+void undo(char *fileName)
+{
+    remove(fileName);
+    rename(make_it_hidden(fileName, strlen(fileName)), fileName);
 }
 
 int main()
@@ -396,6 +415,11 @@ int main()
             sscanf(input_line, "%s", charNum);
             FILE *clipboard = fopen(".clipboard.txt", "r");
             paste(fileName, atoi(lineNum), atoi(charNum), clipboard, output);
+        }
+        else if (0 == strcmp(command, "undo"))
+        {
+            extract_from_input(input_line, fileName);
+            undo(fileName);
         }
         else if (0 == strcmp(command, "exit"))
         {
