@@ -65,49 +65,72 @@ char *get_dir(char *fileName, int n)
             break;
     if (i > 0)
         strncpy(dir, fileName, i);
+    else
+        dir[0] = '.';
     return dir;
+}
+
+void rm_ch_index(char *str, int i)
+{
+    for (int j = i; j < strlen(str); j++)
+        str[j] = str[j + 1];
 }
 
 void insert(char *fileName, char *str, int lineNum, int charNum, char *output)
 {
     FILE *file = fopen(fileName, "r");
     if (file == NULL)
-        strcpy(output, "Something went wrong!");
-    else
     {
-        int n = strlen(fileName);
-        char *dir = get_dir(fileName, n);
-        strcat(dir, "/thisIsAnAuxiliaryFile.txt");
-        FILE *auxiliary_file = fopen(dir, "w");
-        char c = 0;
-        --lineNum;
-        while (lineNum > 0 && !feof(file))
-        {
-            c = fgetc(file);
-            fputc(c, auxiliary_file);
-            if (c == '\n')
-                --lineNum;
-        }
-        while (charNum > 0 && !feof(file))
-        {
-            c = fgetc(file);
-            charNum--;
-            fputc(c, auxiliary_file);
-        }
-        fputs(str, auxiliary_file);
-        while (1)
-        {
-            c = fgetc(file);
-            if (c == EOF)
-                break;
-            fputc(c, auxiliary_file);
-        }
-        fclose(file);
-        fclose(auxiliary_file);
-        remove(fileName);
-        rename(dir, fileName);
-        strcpy(output, "Success!");
+        strcpy(output, "Something went wrong!");
+        return;
     }
+    int n = strlen(fileName);
+    char *dir = get_dir(fileName, n);
+    strcat(dir, "/thisIsAnAuxiliaryFile.txt");
+    FILE *auxiliary_file = fopen(dir, "w");
+    char c = 0;
+    --lineNum;
+    while (lineNum > 0 && !feof(file))
+    {
+        c = fgetc(file);
+        fputc(c, auxiliary_file);
+        if (c == '\n')
+            --lineNum;
+    }
+    while (charNum > 0 && !feof(file))
+    {
+        c = fgetc(file);
+        charNum--;
+        fputc(c, auxiliary_file);
+    }
+    for (int i = 0;; i++)
+    {
+        if (str[i] == 0)
+            break;
+        if (str[i] == '\\')
+        {
+            if (str[i + 1] == 'n')
+            {
+                str[i + 1] = '\n';
+                rm_ch_index(str, i);
+            }
+            else if (str[i + 1] == '\\' && str[i + 2] == 'n')
+                rm_ch_index(str, i);
+        }
+        fputc(str[i], auxiliary_file);
+    }
+    while (1)
+    {
+        c = fgetc(file);
+        if (c == EOF)
+            break;
+        fputc(c, auxiliary_file);
+    }
+    fclose(file);
+    fclose(auxiliary_file);
+    remove(fileName);
+    rename(dir, fileName);
+    strcpy(output, "Success!");
 }
 
 void cat(char *fileName)
@@ -115,6 +138,7 @@ void cat(char *fileName)
     FILE *file = fopen(fileName, "r");
     if (file == NULL)
     {
+        printf(fileName);
         puts("Something went wrong!");
         return;
     }
@@ -143,13 +167,11 @@ void removeStr(char *fileName, int lineNum, int charNum, int size, char jahat, c
     strcat(dir, "/thisIsAnAuxiliaryFile.txt");
     FILE *auxiliary_file = fopen(dir, "w");
     --lineNum;
-    char c = 0;
-    int n = 0;
+    char c;
     while (lineNum > 0 && !feof(file))
     {
         c = fgetc(file);
-        putc(c, auxiliary_file);
-        ++n;
+        fputc(c, auxiliary_file);
         if (c == '\n')
             --lineNum;
     }
@@ -157,13 +179,10 @@ void removeStr(char *fileName, int lineNum, int charNum, int size, char jahat, c
     {
         c = fgetc(file);
         --charNum;
-        putc(c, auxiliary_file);
-        ++n;
+        fputc(c, auxiliary_file);
     }
     if (jahat == 'b')
-    {
         fseek(auxiliary_file, -size, SEEK_CUR);
-    }
     else if (jahat == 'f')
         fseek(file, size, SEEK_CUR);
     while (1)
@@ -182,12 +201,30 @@ void removeStr(char *fileName, int lineNum, int charNum, int size, char jahat, c
 
 int extract_from_input(char *input, char *subStr)
 {
-    int n;
+    int n = 0;
     if (input[0] == '"')
     {
         input += 1;
-        sscanf(input, "%[^\"]", subStr);
-        n = strlen(subStr) + 2;
+        for (int i = 0;; i++)
+        {
+            ++n;
+            if (input[i] == '"')
+            {
+                if (input[i - 1] != '\\')
+                {
+                    subStr[i] = 0;
+                    break;
+                }
+                else
+                {
+                    subStr[i - 1] = '"';
+                    rm_ch_index(input, i);
+                    --i;
+                }
+            }
+            else
+                subStr[i] = input[i];
+        }
     }
     else
     {
