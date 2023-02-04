@@ -3,8 +3,8 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
-#include <sys/stat.h> //mkdir()
-#include <dirent.h>   //opendir(), DIR
+#include <sys/stat.h>
+#include <dirent.h>
 
 #define MAX_COMMAND_SIZE 20
 #define MAX_FILE_NAME 200
@@ -334,10 +334,47 @@ void paste(char *fileName, int lineNum, int startPos, FILE *clipboard, char *out
     }
 }
 
-void undo(char *fileName)
+void undo(char *fileName, char *output)
 {
-    remove(fileName);
-    rename(make_it_hidden(fileName, strlen(fileName)), fileName);
+    int a = remove(fileName);
+    int b = rename(make_it_hidden(fileName, strlen(fileName)), fileName);
+    if (!a && !b)
+        strcpy(output, "Done!");
+    else
+        strcpy(output, "Something went wrong!");
+}
+
+void tree(int depth, char *path, int indentation)
+{
+    struct dirent *dp;
+    DIR *dir = opendir(path);
+    char subDir[MAX_FILE_NAME];
+    if (!dir)
+        return;
+    while ((dp = readdir(dir)) != NULL)
+    {
+        if (dp->d_name[0] != '.')
+        {
+            for (int i = 0; i < indentation; i++)
+            {
+                if (i == indentation - 1)
+                    printf("|");
+                else
+                    printf("|  ");
+            }
+            if (indentation != 0)
+                printf("--");
+            printf("%s\n", dp->d_name);
+            if (depth != 0)
+            {
+                strcpy(subDir, path);
+                strcat(subDir, "/");
+                strcat(subDir, dp->d_name);
+                tree(depth - 1, subDir, indentation + 1);
+            }
+        }
+    }
+    closedir(dir);
 }
 
 int main()
@@ -348,6 +385,8 @@ int main()
     char output[MAX_OUTPUT_SIZE];
     char str[200];
     char lineNum[100], charNum[100], size[1000], flag;
+    char basedir[MAX_FILE_NAME], depth[5];
+    strcpy(basedir, "root");
     while (1)
     {
         fgets(input_line, MAX_INPUT_SIZE, stdin);
@@ -419,16 +458,18 @@ int main()
         else if (0 == strcmp(command, "undo"))
         {
             extract_from_input(input_line, fileName);
-            undo(fileName);
+            undo(fileName, output);
+        }
+        else if (0 == strcmp(command, "tree"))
+        {
+            sscanf(input_line, "%s", depth);
+            tree(atoi(depth), basedir, 0);
+            continue;
         }
         else if (0 == strcmp(command, "exit"))
-        {
             return 0;
-        }
         else
-        {
             strcpy(output, "Invalid command!");
-        }
         puts(output);
     }
     free(input_line);
