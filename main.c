@@ -10,6 +10,7 @@
 #define MAX_FILE_NAME 200
 #define MAX_INPUT_SIZE 1000
 #define MAX_OUTPUT_SIZE 100
+#define LINE_MAX 200
 
 void super_md(char *address, int n)
 {
@@ -377,6 +378,45 @@ void tree(int depth, char *path, int indentation)
     closedir(dir);
 }
 
+void find(char *fileName, char *str, int option)
+{
+    FILE *file = fopen(fileName, "r");
+    if (file == NULL)
+    {
+        puts("Something went wrong!");
+        return;
+    }
+    char *line = calloc(LINE_MAX, sizeof(char));
+    int distant_from_end_of_line;
+    int n = 0;
+    while (!feof(file))
+    {
+        fgets(line, LINE_MAX, file);
+        while (1)
+        {
+            if (strstr(line, str) != NULL)
+            {
+                ++n;
+                if (option == 0)
+                {
+                    distant_from_end_of_line = line + strlen(line) - strstr(line, str);
+                    printf("%d\n", ftell(file) - distant_from_end_of_line);
+                    fclose(file);
+                    return;
+                }
+            }
+            else
+                break;
+            line = strstr(line, str) + 1;
+        }
+    }
+    if (option == 0)
+        puts("Not found!");
+    else if (option == 1)
+        printf("%d\n", n);
+    fclose(file);
+}
+
 int main()
 {
     char *input_line = (char *)calloc(MAX_INPUT_SIZE, sizeof(char));
@@ -464,6 +504,17 @@ int main()
         {
             sscanf(input_line, "%s", depth);
             tree(atoi(depth), basedir, 0);
+            continue;
+        }
+        else if (0 == strcmp(command, "find"))
+        {
+            input_line += extract_from_input(input_line, fileName) + 1;
+            input_line += extract_from_input(input_line, str) + 1;
+            if (strchr(input_line, '-') == NULL)
+                flag = 0;
+            else if (strcmp(input_line, "-c") == 0)
+                flag = 1;
+            find(fileName, str, flag);
             continue;
         }
         else if (0 == strcmp(command, "exit"))
